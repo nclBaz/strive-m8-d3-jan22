@@ -2,7 +2,7 @@ import express from "express"
 import createError from "http-errors"
 import { adminOnlyMiddleware } from "../../auth/admin.js"
 import { JWTAuthMiddleware } from "../../auth/token.js"
-import { generateAccessToken } from "../../auth/tools.js"
+import { authenticateUser, verifyRefreshTokenAndGenerateNewTokens } from "../../auth/tools.js"
 import UsersModel from "./model.js"
 
 const usersRouter = express.Router()
@@ -79,8 +79,8 @@ usersRouter.post("/login", async (req, res, next) => {
     if (user) {
       // 3. If credentials are ok --> generate an access token (JWT) and send it as a response
 
-      const accessToken = await generateAccessToken({ _id: user._id, role: user.role })
-      res.send({ accessToken })
+      const { accessToken, refreshToken } = await authenticateUser(user)
+      res.send({ accessToken, refreshToken })
     } else {
       // 4. If credentials are not ok --> throw an error (401)
       next(createError(401, "Credentials are not ok!"))
@@ -89,5 +89,41 @@ usersRouter.post("/login", async (req, res, next) => {
     next(error)
   }
 })
+
+usersRouter.post("/refreshTokens", async (req, res, next) => {
+  try {
+    // 1. Receive the refresh token in req.body
+    const { currentRefreshToken } = req.body
+
+    // 2. Check validity of that token (check if it is not expired, check if it is not compromised, check if it is same as the one we store in db)
+    const { accessToken, refreshToken } = await verifyRefreshTokenAndGenerateNewTokens(currentRefreshToken)
+    // 3. If everything is fine --> generate a new pair of tokens (accessToken2 & refreshToken2)
+
+    // 4. Send them back as a response
+    res.send({ accessToken, refreshToken })
+  } catch (error) {
+    next(error)
+  }
+})
+
+/*
+FE
+
+await fetch("/certainResource", {headers: {Authorization: accessToken}})
+
+if(401){
+  const {accessToken, refreshToken} = await fetch("/users/refreshTokens", {method: "POST", body: {currentRefreshToken: localStorage.getItem("refreshToken")}})
+  if(res.ok) {
+    localStorage.setItem("accessToken", accessToken)
+    localStorage.setItem("refreshToken", refreshToken)
+
+    await fetch("/certainResource", {headers: {Authorization: localStorage.getItem("accessToken")}})
+  }
+
+}
+
+ALTERNATIVE WITH AXIOS --> https://www.npmjs.com/package/axios-auth-refresh
+
+*/
 
 export default usersRouter
