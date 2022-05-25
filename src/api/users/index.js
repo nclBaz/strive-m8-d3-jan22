@@ -1,7 +1,7 @@
 import express from "express"
 import createError from "http-errors"
 import { adminOnlyMiddleware } from "../../auth/admin.js"
-import { basicAuthMiddleware } from "../../auth/basic.js"
+import { JWTAuthMiddleware } from "../../auth/token.js"
 import { generateAccessToken } from "../../auth/tools.js"
 import UsersModel from "./model.js"
 
@@ -17,7 +17,7 @@ usersRouter.post("/", async (req, res, next) => {
   }
 })
 
-usersRouter.get("/", basicAuthMiddleware, adminOnlyMiddleware, async (req, res, next) => {
+usersRouter.get("/", JWTAuthMiddleware, adminOnlyMiddleware, async (req, res, next) => {
   try {
     const users = await UsersModel.find()
     res.send(users)
@@ -26,15 +26,16 @@ usersRouter.get("/", basicAuthMiddleware, adminOnlyMiddleware, async (req, res, 
   }
 })
 
-usersRouter.get("/me", basicAuthMiddleware, async (req, res, next) => {
+usersRouter.get("/me", JWTAuthMiddleware, async (req, res, next) => {
   try {
-    res.send(req.user)
+    const user = await UsersModel.findById(req.user._id)
+    res.send(user)
   } catch (error) {
     next(error)
   }
 })
 
-usersRouter.put("/me", basicAuthMiddleware, async (req, res, next) => {
+usersRouter.put("/me", JWTAuthMiddleware, async (req, res, next) => {
   try {
     const modifiedUser = await UsersModel.findByIdAndUpdate(req.user._id, req.body)
   } catch (error) {
@@ -42,25 +43,25 @@ usersRouter.put("/me", basicAuthMiddleware, async (req, res, next) => {
   }
 })
 
-usersRouter.delete("/me", basicAuthMiddleware, async (req, res, next) => {
+usersRouter.delete("/me", JWTAuthMiddleware, async (req, res, next) => {
   await UsersModel.findByIdAndDelete(req.user._id)
 })
 
-usersRouter.get("/:userId", basicAuthMiddleware, async (req, res, next) => {
+usersRouter.get("/:userId", JWTAuthMiddleware, async (req, res, next) => {
   try {
   } catch (error) {
     next(error)
   }
 })
 
-usersRouter.put("/:userId", basicAuthMiddleware, adminOnlyMiddleware, async (req, res, next) => {
+usersRouter.put("/:userId", JWTAuthMiddleware, adminOnlyMiddleware, async (req, res, next) => {
   try {
   } catch (error) {
     next(error)
   }
 })
 
-usersRouter.delete("/:userId", basicAuthMiddleware, adminOnlyMiddleware, async (req, res, next) => {
+usersRouter.delete("/:userId", JWTAuthMiddleware, adminOnlyMiddleware, async (req, res, next) => {
   try {
   } catch (error) {
     next(error)
