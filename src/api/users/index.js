@@ -1,6 +1,8 @@
 import express from "express"
+import createError from "http-errors"
 import { adminOnlyMiddleware } from "../../auth/admin.js"
 import { basicAuthMiddleware } from "../../auth/basic.js"
+import { generateAccessToken } from "../../auth/tools.js"
 import UsersModel from "./model.js"
 
 const usersRouter = express.Router()
@@ -60,6 +62,28 @@ usersRouter.put("/:userId", basicAuthMiddleware, adminOnlyMiddleware, async (req
 
 usersRouter.delete("/:userId", basicAuthMiddleware, adminOnlyMiddleware, async (req, res, next) => {
   try {
+  } catch (error) {
+    next(error)
+  }
+})
+
+usersRouter.post("/login", async (req, res, next) => {
+  try {
+    // 1. Obtain credentials from req.body
+    const { email, password } = req.body
+
+    // 2. Verify credentials
+    const user = await UsersModel.checkCredentials(email, password)
+
+    if (user) {
+      // 3. If credentials are ok --> generate an access token (JWT) and send it as a response
+
+      const accessToken = await generateAccessToken({ _id: user._id, role: user.role })
+      res.send({ accessToken })
+    } else {
+      // 4. If credentials are not ok --> throw an error (401)
+      next(createError(401, "Credentials are not ok!"))
+    }
   } catch (error) {
     next(error)
   }
